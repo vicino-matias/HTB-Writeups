@@ -1,0 +1,72 @@
+<h2 id="resumen">Resumen</h2>
+<h3 id="breve-descripción-de-la-máquina">Breve descripción de la
+máquina:</h3>
+<ul>
+<li>Nombre: Cap</li>
+<li>Direccion utilizada: 10.10.10.245</li>
+<li>Dificultad: Fácil</li>
+<li>Sistema Operativo: Linux</li>
+<li>Resumen: La maquina expone un servidor web vulnerable a IDOR que
+permite acceder a capturas de red de otros usuarios, revelando
+credenciales. Luego, una capability de Linux mal configurada permite
+escalar privilegios a root.</li>
+</ul>
+<h2 id="enumeracion">Enumeracion</h2>
+<h3 id="nmap">Nmap</h3>
+<p>nmap -p- –min-rate=1000 -Pn -T4 10.10.10.245 nmap -p21,22,80 -Pn -sC
+-sV 10.10.10.245</p>
+<p>Resultados: - 21/tcp - FTP (sin acceso anónimo) - 22/tcp - OpenSSH
+(password capturada con Wireshark) - 80/tcp - Gunicorn HTTP server
+(Python-based)</p>
+<h2 id="explotacion-foothold">Explotacion (Foothold)</h2>
+<h3 id="http">HTTP</h3>
+<ul>
+<li>Acceso al panel web con varias funciones administrativas (ifconfig,
+netstat, capturas).</li>
+<li>La funcionalidad de captura genera archivos accesibles por IDOR:
+/data/ID</li>
+<li>Descargando /data/0 obtuvimos un .pcap con tráfico FTP</li>
+</ul>
+<h3 id="pcap">PCAP</h3>
+<ul>
+<li>En Wireshark se identifican credenciales FTP: <em>Usuario</em>:
+nathan <em>Password</em>: Buck3tH4TF0RM3!</li>
+</ul>
+<h3 id="ssh">SSH</h3>
+<ul>
+<li>Las credenciales encontradas en PCAP son validas para ingresar por
+SSH</li>
+</ul>
+<h2 id="escalada-de-privilegios">Escalada de privilegios</h2>
+<h3 id="linpeas">LinPEAS</h3>
+<ul>
+<li><p>Se encontro que python tiene capabilities vulnerables:
+cap_setuid, cap_net_bind_service=eip</p></li>
+<li><p>Esto permite ejecutar Python con UID 0 y escalar a root:</p></li>
+</ul>
+<p>import os os.setuid(0) os.system(“/bin/bash”)</p>
+<ul>
+<li>Resultado: shell root</li>
+</ul>
+<h2 id="flags">Flags</h2>
+<ul>
+<li>user.txt (encontrada ni bien ingresar al ssh</li>
+<li>root.txt (encontrada al escalar privilegios con python, en la
+carpeta root)</li>
+</ul>
+<h2 id="notas-finales">Notas finales</h2>
+<ul>
+<li>Vulnerabilidades explotadas:
+<ul>
+<li>IDOR (Insecure Direct Object Reference)</li>
+<li>Linux capability mal configurada (cap_setuid)</li>
+</ul></li>
+<li>Aprendizaje: Importancia de proteger endpoints y manejar capacidades
+de binarios correctamente</li>
+</ul>
+<h2 id="recomendaciones">Recomendaciones</h2>
+<ul>
+<li>Validar accesos en el servidor web, impedir acceso directo a
+recursos por IDOR.</li>
+<li>Evitar capabilities innecesarias en binarios criticos.</li>
+</ul>
